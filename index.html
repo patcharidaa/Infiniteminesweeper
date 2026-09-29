@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#111827">
+<meta name="description" content="Infinite Minesweeper — explore, solve, and unlock an endless world of sections.">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>Infinite Minesweeper</title>
+<style>
+:root{--bg:#f3f4f6;--panel:#fff;--text:#111827;--muted:#6b7280;--line:#d1d5db;--cell:#e5e7eb;--cell2:#f9fafb;--accent:#2563eb;--danger:#dc2626;--good:#16a34a;--shadow:0 8px 30px #0002}
+[data-theme=dark]{--bg:#0b0f17;--panel:#151b26;--text:#f3f4f6;--muted:#9ca3af;--line:#303847;--cell:#273142;--cell2:#1b2330;--accent:#60a5fa;--danger:#f87171;--good:#4ade80;--shadow:0 8px 30px #0006}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+button{font:inherit;color:inherit}
+#app{height:100%;display:flex;flex-direction:column}
+header{height:58px;flex:0 0 58px;display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--panel);z-index:5}
+.logo{font-weight:800;white-space:nowrap}.logo span{font-size:20px}
+.stats{display:flex;gap:8px;min-width:0;overflow:auto;margin-left:auto}
+.stat{padding:5px 9px;border:1px solid var(--line);border-radius:9px;white-space:nowrap;font-size:12px;background:var(--cell2)}
+.stat b{font-size:14px}
+.iconbtn{width:40px;height:40px;border:1px solid var(--line);border-radius:10px;background:var(--panel);cursor:pointer;display:grid;place-items:center}
+#game{position:relative;flex:1;overflow:hidden;touch-action:none;background:var(--bg)}
+#world{position:absolute;transform-origin:0 0;will-change:transform}
+.section{position:absolute;width:310px;height:310px;padding:12px;border:2px solid var(--line);border-radius:14px;background:var(--panel);box-shadow:var(--shadow)}
+.section.locked{filter:saturate(.4);opacity:.78}
+.section-head{height:24px;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--muted);margin-bottom:6px}
+.section-title{font-weight:800;color:var(--text)}
+.board{width:280px;height:280px;display:grid;grid-template-columns:repeat(10,1fr);grid-template-rows:repeat(10,1fr);gap:2px}
+.cell{border:0;border-radius:3px;background:var(--cell);display:grid;place-items:center;font-weight:800;font-size:14px;cursor:pointer;user-select:none}
+.cell.hidden{box-shadow:inset 0 0 0 1px #0001}
+.cell.revealed{background:var(--cell2);cursor:default}
+.cell.flag{background:color-mix(in srgb,var(--accent) 22%,var(--cell));color:var(--accent)}
+.cell.mine{background:color-mix(in srgb,var(--danger) 28%,var(--cell));color:var(--danger)}
+.n1{color:#2563eb}.n2{color:#16a34a}.n3{color:#dc2626}.n4{color:#7c3aed}.n5{color:#b45309}.n6{color:#0891b2}.n7{color:#111827}.n8{color:#6b7280}
+[data-theme=dark] .n1{color:#60a5fa}[data-theme=dark] .n2{color:#4ade80}[data-theme=dark] .n3{color:#f87171}[data-theme=dark] .n4{color:#a78bfa}[data-theme=dark] .n7{color:#f3f4f6}
+#hud{position:absolute;left:12px;bottom:12px;display:flex;gap:8px;flex-wrap:wrap;z-index:4}
+.pill{border:1px solid var(--line);background:var(--panel);box-shadow:var(--shadow);padding:8px 11px;border-radius:11px;font-size:12px}
+#zoomHud{position:absolute;right:12px;bottom:12px;display:flex;gap:6px;z-index:4}
+#zoomHud button{width:40px;height:40px;border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:var(--shadow);cursor:pointer;font-size:20px}
+#mapPanel{position:absolute;top:70px;right:12px;width:min(290px,calc(100% - 24px));max-height:calc(100% - 145px);overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:14px;z-index:6;display:none}
+#mapPanel.open{display:block}
+#mapCanvas{width:100%;height:230px;border:1px solid var(--line);border-radius:10px;background:var(--cell2);display:block}
+.legend{font-size:12px;color:var(--muted);line-height:1.5;margin-top:9px}
+.actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.actions button{border:1px solid var(--line);background:var(--cell2);padding:8px 10px;border-radius:9px;cursor:pointer}
+.modal{position:absolute;inset:0;background:#0008;z-index:10;display:none;align-items:center;justify-content:center;padding:18px}.modal.show{display:flex}
+.card{width:min(420px,100%);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:var(--shadow)}
+.card h2{margin:0 0 8px}.card p{color:var(--muted);line-height:1.5}.primary{border:0;background:var(--accent);color:#fff;padding:11px 15px;border-radius:10px;font-weight:700;cursor:pointer}
+.toast{position:absolute;left:50%;bottom:70px;transform:translateX(-50%) translateY(10px);background:var(--text);color:var(--panel);padding:9px 13px;border-radius:10px;font-size:13px;opacity:0;pointer-events:none;transition:.2s;z-index:20}.toast.show{opacity:1;transform:translateX(-50%)}
+@media(max-width:600px){header{height:54px;flex-basis:54px}.logo{font-size:14px}.stats{gap:5px}.stat{padding:4px 7px}.section{width:258px;height:258px;padding:10px}.board{width:234px;height:234px}.cell{font-size:12px}.pill{font-size:11px}}
+</style>
+</head>
+<body>
+<div id="app">
+<header>
+  <div class="logo">♾️ <span>Infinite Minesweeper</span></div>
+  <div class="stats">
+    <div class="stat">✓ <b id="completed">0</b></div>
+    <div class="stat">🔒 <b id="locked">0</b></div>
+    <div class="stat">💣 <b id="mines">0</b></div>
+  </div>
+  <button class="iconbtn" id="mapBtn" aria-label="Open progress map">🗺️</button>
+  <button class="iconbtn" id="themeBtn" aria-label="Toggle dark mode">🌙</button>
+</header>
+<main id="game" aria-label="Infinite Minesweeper board">
+  <div id="world"></div>
+  <div id="hud">
+    <div class="pill">Section: <b id="sectionPos">0, 0</b></div>
+    <div class="pill">Mine mode: <b id="mode">OFF</b> · Right-click / long-press to flag</div>
+  </div>
+  <div id="zoomHud"><button id="minus" aria-label="Zoom out">−</button><button id="plus" aria-label="Zoom in">+</button><button id="home" aria-label="Return to start">⌂</button></div>
+  <aside id="mapPanel">
+    <b>World Progress</b>
+    <canvas id="mapCanvas" width="520" height="420"></canvas>
+    <div class="legend">Green = completed · Red = locked · Blue = active · Gray = discovered. Your world is infinite; this map shows the area you've visited.</div>
+    <div class="actions"><button id="reset">Reset world</button><button id="closeMap">Close</button></div>
+  </aside>
+  <div class="modal" id="modal">
+    <div class="card">
+      <h2 id="modalTitle">Section locked</h2>
+      <p id="modalText"></p>
+      <button class="primary" id="modalClose">Got it</button>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+</main>
+</div>
+<script>
+(() => {
+const SIZE=10, SECTION_PX=310, GAP=18, STEP=SECTION_PX+GAP, SAVE='infinite-minesweeper-v1';
+const game=document.getElementById('game'), world=document.getElementById('world');
+const state={sections:new Map(), cells:new Map(), x:0,y:0,scale:1,drag:false,lastX:0,lastY:0,theme:matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'};
+const key=(x,y)=>x+','+y;
+function hash(x,y){let n=(x*374761393+y*668265263)|0;n=(n^(n>>>13))*1274126177;n^=n>>>16;return n>>>0}
+function rng(seed){return()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}}
+function sectionData(sx,sy){
+  const r=rng(hash(sx,sy)), mines=new Set();
+  let target=15+Math.floor(r()*9);
+  while(mines.size<target) mines.add(Math.floor(r()*100));
+  return {mines,adj:[]};
+}
+function cellAt(sx,sy,i){return state.cells.get(key(sx,sy)+':'+i)}
+function getSection(sx,sy){
+  const k=key(sx,sy); if(state.sections.has(k)) return state.sections.get(k);
+  const d=sectionData(sx,sy); const s={x:sx,y:sy,status:(sx===0&&sy===0)?'active':'unseen',data:d,revealed:new Set(),flags:new Set()};
+  state.sections.set(k,s); return s;
+}
+function mineAt(sx,sy,i){return sectionData(sx,sy).mines.has(i)}
+function adjacentMineCount(sx,sy,i){
+  const cx=i%10,cy=Math.floor(i/10); let n=0;
+  for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){if(!dx&&!dy)continue;let x=cx+dx,y=cy+dy,ssx=sx,ssy=sy;if(x<0){x=9;ssx--}if(x>9){x=0;ssx++}if(y<0){y=9;ssy--}if(y>9){y=0;ssy++}if(mineAt(ssx,ssy,y*10+x))n++} return n;
+}
+function canEnter(s){
+  if(s.status==='locked'){
+    toast('This section is locked. Complete all four surrounding sections to unlock it.');
+    return false;
+  }
+  return true;
+}
+function renderSection(s){
+  const id=key(s.x,s.y), old=document.querySelector('[data-section="'+id+'"]');
+  if(old) old.remove();
+  const el=document.createElement('section');el.className='section '+(s.status==='locked'?'locked':'');el.dataset.section=id;
+  el.style.left=(s.x*STEP)+'px';el.style.top=(s.y*STEP)+'px';
+  const head=document.createElement('div');head.className='section-head';
+  head.innerHTML='<span class="section-title">'+(s.x===0&&s.y===0?'START':'SECTION '+s.x+','+s.y)+'</span><span>'+statusIcon(s.status)+'</span>';
+  const board=document.createElement('div');board.className='board';
+  for(let i=0;i<100;i++){
+    const b=document.createElement('button');b.type='button';b.className='cell hidden';b.dataset.i=i;
+    const rev=s.revealed.has(i),flag=s.flags.has(i);
+    if(rev){b.className='cell revealed';if(s.data.mines.has(i)){b.className+=' mine';b.textContent='💣'}else{let n=adjacentMineCount(s.x,s.y,i);if(n){b.textContent=n;b.classList.add('n'+n)}}}
+    else if(flag){b.className='cell flag';b.textContent='⚑'}
+    b.addEventListener('click',()=>clickCell(s,i));
+    b.addEventListener('contextmenu',e=>{e.preventDefault();flagCell(s,i)});
+    let timer;
+    b.addEventListener('pointerdown',e=>{if(e.pointerType==='touch')timer=setTimeout(()=>{flagCell(s,i)},430)});
+    b.addEventListener('pointerup',()=>clearTimeout(timer));b.addEventListener('pointercancel',()=>clearTimeout(timer));
+    board.appendChild(b);
+  }
+  el.append(head,board);world.appendChild(el);
+}
+function statusIcon(st){return st==='completed'?'✓':st==='locked'?'🔒':st==='active'?'●':'○'}
+function revealFlood(s,start){
+  const q=[start], seen=new Set();
+  while(q.length){const i=q.shift();if(seen.has(i)||s.flags.has(i))continue;seen.add(i);if(s.data.mines.has(i))continue;s.revealed.add(i);if(adjacentMineCount(s.x,s.y,i)===0){const x=i%10,y=Math.floor(i/10);for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){let xx=x+dx,yy=y+dy;if(xx>=0&&xx<10&&yy>=0&&yy<10)q.push(yy*10+xx)}}}
+}
+function clickCell(s,i){
+  if(!canEnter(s))return;
+  if(s.data.mines.has(i)){s.status='locked';s.revealed=new Set([...s.revealed,i]);renderSection(s);update();save();modal('💥 Mine hit',`Section ${s.x}, ${s.y} is now locked. Complete its four neighboring sections to unlock it again.`);return}
+  if(s.revealed.has(i)||s.flags.has(i))return;
+  revealFlood(s,i);checkComplete(s);renderSection(s);discoverNeighbors(s);update();save();
+}
+function flagCell(s,i){if(!canEnter(s)||s.revealed.has(i))return;s.flags.has(i)?s.flags.delete(i):s.flags.add(i);renderSection(s);save()}
+function checkComplete(s){if(s.revealed.size+s.flags.size>=100-s.data.mines.size){let safe=0;for(let i=0;i<100;i++)if(!s.data.mines.has(i)&&s.revealed.has(i))safe++;if(safe===100-s.data.mines.size){s.status='completed';unlockAround(s);toast('Section completed! ✓')}}}
+function unlockAround(s){
+  [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dx,dy])=>{const n=getSection(s.x+dx,s.y+dy);if(n.status==='unseen')n.status='active'});
+  for(const n of state.sections.values())if(n.status==='locked'){const ok=[[1,0],[-1,0],[0,1],[0,-1]].every(([dx,dy])=>getSection(n.x+dx,n.y+dy).status==='completed');if(ok)n.status='active'}
+}
+function discoverNeighbors(s){[[1,0],[-1,0],[0,1],[0,-1]].forEach(([dx,dy])=>getSection(s.x+dx,s.y+dy));renderVisible()}
+function renderVisible(){
+  const range=Math.ceil(850/(STEP*state.scale))+2;
+  for(let x=-range;x<=range;x++)for(let y=-range;y<=range;y++){const s=getSection(x,y);if(s.status!=='unseen'||Math.abs(x)<=2&&Math.abs(y)<=2)renderSection(s)}
+  applyTransform();
+}
+function applyTransform(){world.style.transform=`translate(${state.x}px,${state.y}px) scale(${state.scale})`}
+function centerStart(){state.scale=1;state.x=game.clientWidth/2-155;state.y=game.clientHeight/2-155;applyTransform()}
+function zoomAt(factor,cx,cy){
+  const old=state.scale,n=Math.max(.35,Math.min(2.8,old*factor));if(n===old)return;
+  state.x=cx-(cx-state.x)*(n/old);state.y=cy-(cy-state.y)*(n/old);state.scale=n;applyTransform();
+}
+function update(){
+ document.getElementById('completed').textContent=[...state.sections.values()].filter(s=>s.status==='completed').length;
+ document.getElementById('locked').textContent=[...state.sections.values()].filter(s=>s.status==='locked').length;
+ document.getElementById('mines').textContent=[...state.sections.values()].filter(s=>s.status!=='unseen').reduce((a,s)=>a+s.data.mines.size,0);
+ drawMap();
+}
+function save(){const out={theme:state.theme,x:state.x,y:state.y,scale:state.scale,sections:[...state.sections.values()].map(s=>({x:s.x,y:s.y,status:s.status,revealed:[...s.revealed],flags:[...s.flags]}))};try{localStorage.setItem(SAVE,JSON.stringify(out))}catch{}}
+function load(){
+ try{const d=JSON.parse(localStorage.getItem(SAVE)||'null');if(d){state.theme=d.theme||state.theme;state.x=d.x??0;state.y=d.y??0;state.scale=d.scale??1;(d.sections||[]).forEach(a=>{const s=getSection(a.x,a.y);s.status=a.status;s.revealed=new Set(a.revealed);s.flags=new Set(a.flags)})}}catch{}
+ document.documentElement.dataset.theme=state.theme;
+}
+function toast(t){const el=document.getElementById('toast');el.textContent=t;el.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove('show'),1800)}
+function modal(t,p){document.getElementById('modalTitle').textContent=t;document.getElementById('modalText').textContent=p;document.getElementById('modal').classList.add('show')}
+function drawMap(){
+ const c=document.getElementById('mapCanvas'),ctx=c.getContext('2d'),w=c.width,h=c.height;ctx.clearRect(0,0,w,h);
+ ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--cell2');ctx.fillRect(0,0,w,h);
+ const known=[...state.sections.values()].filter(s=>s.status!=='unseen');if(!known.length)return;
+ const xs=known.map(s=>s.x),ys=known.map(s=>s.y),minx=Math.min(...xs),maxx=Math.max(...xs),miny=Math.min(...ys),maxy=Math.max(...ys);
+ const pad=30, scale=Math.min((w-pad*2)/(maxx-minx+1),(h-pad*2)/(maxy-miny+1));
+ known.forEach(s=>{const x=pad+(s.x-minx)*scale,y=pad+(s.y-miny)*scale;ctx.fillStyle=s.status==='completed'?'#22c55e':s.status==='locked'?'#ef4444':s.status==='active'?'#3b82f6':'#94a3b8';ctx.fillRect(x,y,Math.max(5,scale-3),Math.max(5,scale-3))});
+}
+function reset(){if(!confirm('Reset all Infinite Minesweeper progress?'))return;localStorage.removeItem(SAVE);location.reload()}
+game.addEventListener('pointerdown',e=>{if(e.target.closest('button,.section'))return;state.drag=true;state.lastX=e.clientX;state.lastY=e.clientY;game.setPointerCapture(e.pointerId)});
+game.addEventListener('pointermove',e=>{if(!state.drag)return;state.x+=e.clientX-state.lastX;state.y+=e.clientY-state.lastY;state.lastX=e.clientX;state.lastY=e.clientY;applyTransform()});
+game.addEventListener('pointerup',()=>{state.drag=false;save()});game.addEventListener('pointercancel',()=>state.drag=false);
+game.addEventListener('wheel',e=>{e.preventDefault();const r=game.getBoundingClientRect();zoomAt(e.deltaY<0?1.12:.89,e.clientX-r.left,e.clientY-r.top)},{passive:false});
+document.getElementById('plus').onclick=()=>zoomAt(1.2,game.clientWidth/2,game.clientHeight/2);
+document.getElementById('minus').onclick=()=>zoomAt(.83,game.clientWidth/2,game.clientHeight/2);
+document.getElementById('home').onclick=centerStart;
+document.getElementById('themeBtn').onclick=()=>{state.theme=state.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=state.theme;save();drawMap()};
+document.getElementById('mapBtn').onclick=()=>{document.getElementById('mapPanel').classList.toggle('open');drawMap()};
+document.getElementById('closeMap').onclick=()=>document.getElementById('mapPanel').classList.remove('open');
+document.getElementById('reset').onclick=reset;document.getElementById('modalClose').onclick=()=>document.getElementById('modal').classList.remove('show');
+window.addEventListener('resize',()=>{if(!state.x&&!state.y)centerStart()});
+load();renderVisible();if(!state.x&&!state.y)centerStart();update();
+})();
+</script>
+<script>
+if ('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+</script>
+</body>
+</html>
